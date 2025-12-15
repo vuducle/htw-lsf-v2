@@ -7,8 +7,8 @@ import { INestApplication } from '@nestjs/common';
  */
 export function setupSwagger(app: INestApplication) {
   const options = new DocumentBuilder()
-    .setTitle('My Awesome TypeScript Backend')
-    .setDescription('API documentation for My Awesome TypeScript Backend')
+    .setTitle('LSF HTW Berlin - Version 2.0, but cooler')
+    .setDescription('API documentation for LSF HTW Berlin Backend')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

@@ -55,7 +55,7 @@ async function setupDatabase() {
     const initMigration = `
       -- CreateTable "User"
       CREATE TABLE IF NOT EXISTS "User" (
-          "id" SERIAL NOT NULL PRIMARY KEY,
+          "id" TEXT NOT NULL PRIMARY KEY,
           "email" TEXT NOT NULL UNIQUE,
           "password" TEXT NOT NULL,
           "firstName" TEXT NOT NULL,
@@ -68,8 +68,8 @@ async function setupDatabase() {
 
       -- CreateTable "Student"
       CREATE TABLE IF NOT EXISTS "Student" (
-          "id" SERIAL NOT NULL PRIMARY KEY,
-          "userId" INTEGER NOT NULL UNIQUE,
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "userId" TEXT NOT NULL UNIQUE,
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           CONSTRAINT "Student_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -77,8 +77,8 @@ async function setupDatabase() {
 
       -- CreateTable "Teacher"
       CREATE TABLE IF NOT EXISTS "Teacher" (
-          "id" SERIAL NOT NULL PRIMARY KEY,
-          "userId" INTEGER NOT NULL UNIQUE,
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "userId" TEXT NOT NULL UNIQUE,
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           CONSTRAINT "Teacher_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -86,11 +86,11 @@ async function setupDatabase() {
 
       -- CreateTable "Course"
       CREATE TABLE IF NOT EXISTS "Course" (
-          "id" SERIAL NOT NULL PRIMARY KEY,
+          "id" TEXT NOT NULL PRIMARY KEY,
           "title" TEXT NOT NULL,
           "description" TEXT,
           "code" TEXT NOT NULL UNIQUE,
-          "teacherId" INTEGER NOT NULL,
+          "teacherId" TEXT NOT NULL,
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           CONSTRAINT "Course_teacherId_fkey" FOREIGN KEY ("teacherId") REFERENCES "Teacher" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -98,9 +98,9 @@ async function setupDatabase() {
 
       -- CreateTable "Enrollment"
       CREATE TABLE IF NOT EXISTS "Enrollment" (
-          "id" SERIAL NOT NULL PRIMARY KEY,
-          "studentId" INTEGER NOT NULL,
-          "courseId" INTEGER NOT NULL,
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "studentId" TEXT NOT NULL,
+          "courseId" TEXT NOT NULL,
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           CONSTRAINT "Enrollment_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
@@ -110,10 +110,10 @@ async function setupDatabase() {
 
       -- CreateTable "Grade"
       CREATE TABLE IF NOT EXISTS "Grade" (
-          "id" SERIAL NOT NULL PRIMARY KEY,
-          "studentId" INTEGER NOT NULL,
-          "courseId" INTEGER NOT NULL,
-          "teacherId" INTEGER NOT NULL,
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "studentId" TEXT NOT NULL,
+          "courseId" TEXT NOT NULL,
+          "teacherId" TEXT NOT NULL,
           "grade" DOUBLE PRECISION NOT NULL,
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

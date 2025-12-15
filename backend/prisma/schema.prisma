@@ -10,7 +10,7 @@ datasource db {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
+  id           String   @id @default(cuid())
   email        String   @unique
   password     String
   firstName    String
@@ -24,8 +24,8 @@ model User {
 }
 
 model Student {
-  id          Int          @id @default(autoincrement())
-  userId      Int          @unique
+  id          String       @id @default(cuid())
+  userId      String       @unique
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   enrollments Enrollment[]
   grades      Grade[]
@@ -34,8 +34,8 @@ model Student {
 }
 
 model Teacher {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @unique
+  id        String   @id @default(cuid())
+  userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   courses   Course[]
   grades    Grade[]
@@ -44,11 +44,11 @@ model Teacher {
 }
 
 model Course {
-  id          Int          @id @default(autoincrement())
+  id          String       @id @default(cuid())
   title       String
   description String?
   code        String       @unique
-  teacherId   Int
+  teacherId   String
   teacher     Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   enrollments Enrollment[]
   grades      Grade[]
@@ -57,10 +57,10 @@ model Course {
 }
 
 model Enrollment {
-  id        Int      @id @default(autoincrement())
-  studentId Int
+  id        String   @id @default(cuid())
+  studentId String
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  courseId  Int
+  courseId  String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -69,12 +69,12 @@ model Enrollment {
 }
 
 model Grade {
-  id        Int      @id @default(autoincrement())
-  studentId Int
+  id        String   @id @default(cuid())
+  studentId String
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  courseId  Int
+  courseId  String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  teacherId Int
+  teacherId String
   teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   grade     Float
   createdAt DateTime @default(now())

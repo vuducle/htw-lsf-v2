@@ -30,7 +30,7 @@ export class UserService {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Create user and automatically assign as Student
     const user = await this.prisma.client.user.create({
       data: {
         email,
@@ -38,6 +38,9 @@ export class UserService {
         firstName,
         lastName,
         //avatarUrl: avatarUrl || null,
+        student: {
+          create: {},
+        },
       },
     });
 
@@ -134,7 +137,7 @@ export class UserService {
     }
   }
 
-  private async generateTokens(userId: number, email: string) {
+  private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -150,7 +153,7 @@ export class UserService {
     return { accessToken, refreshToken };
   }
 
-  async getUserById(id: number) {
+  async getUserById(id: string) {
     return this.prisma.client.user.findUnique({
       where: { id },
       select: {
