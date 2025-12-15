@@ -64,17 +64,36 @@ async function main() {
 
   console.log('Created student:', student);
 
-  // Create a Course
+  // Create a Course with schedule
   const course = await prisma.course.create({
     data: {
       title: 'Introduction to Computer Science',
       description: 'Learn the fundamentals of computer science',
       code: 'CS101',
       teacherId: teacher.id,
+      startDate: new Date('2025-10-01'),
+      endDate: new Date('2026-03-31'),
+      room: 'Room 101',
+      schedule: {
+        create: [
+          {
+            dayOfWeek: 1, // Monday
+            startTime: '10:00',
+            endTime: '12:00',
+            room: 'Room 101',
+          },
+          {
+            dayOfWeek: 3, // Wednesday
+            startTime: '10:00',
+            endTime: '12:00',
+            room: 'Room 101',
+          },
+        ],
+      },
     },
   });
 
-  console.log('Created course:', course);
+  console.log('Created course with schedule:', course);
 
   // Enroll student in course
   const enrollment = await prisma.enrollment.create({

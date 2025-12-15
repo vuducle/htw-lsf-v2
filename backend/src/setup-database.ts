@@ -24,8 +24,6 @@ async function setupDatabase() {
     database: 'postgres',
   });
 
-  let pool: Pool | null = null;
-
   try {
     console.log('🔧 Checking if database exists...');
 
@@ -44,92 +42,109 @@ async function setupDatabase() {
 
     await adminPool.end();
 
-    // Create pool and Prisma instance
-    pool = new Pool(dbConfig);
-    const adapter = new PrismaPg(pool);
-    const prisma = new PrismaClient({ adapter });
-
-    // Run migrations first (hardcoded since we're using custom adapter)
+    // Connect to the target database for migrations
+    const dbPool = new Pool(dbConfig);
+    
+    // Run manual migrations (Prisma 7.1 with adapters doesn't support migrate commands)
     console.log('🚀 Running database migrations...');
-
-    const initMigration = `
-      -- CreateTable "User"
+    
+    const createTablesSQL = `
+      -- Create User table
       CREATE TABLE IF NOT EXISTS "User" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "email" TEXT NOT NULL UNIQUE,
-          "password" TEXT NOT NULL,
-          "firstName" TEXT NOT NULL,
-          "lastName" TEXT NOT NULL,
-          "avatarUrl" TEXT,
-          "refreshToken" TEXT,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        "firstName" TEXT NOT NULL,
+        "lastName" TEXT NOT NULL,
+        "avatarUrl" TEXT,
+        "refreshToken" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- CreateTable "Student"
-      CREATE TABLE IF NOT EXISTS "Student" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "userId" TEXT NOT NULL UNIQUE,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          CONSTRAINT "Student_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-      );
-
-      -- CreateTable "Teacher"
+      -- Create Teacher table
       CREATE TABLE IF NOT EXISTS "Teacher" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "userId" TEXT NOT NULL UNIQUE,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          CONSTRAINT "Teacher_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        id TEXT PRIMARY KEY,
+        "userId" TEXT UNIQUE NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE
       );
 
-      -- CreateTable "Course"
+      -- Create Student table
+      CREATE TABLE IF NOT EXISTS "Student" (
+        id TEXT PRIMARY KEY,
+        "userId" TEXT UNIQUE NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE
+      );
+
+      -- Create Course table
       CREATE TABLE IF NOT EXISTS "Course" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "title" TEXT NOT NULL,
-          "description" TEXT,
-          "code" TEXT NOT NULL UNIQUE,
-          "teacherId" TEXT NOT NULL,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          CONSTRAINT "Course_teacherId_fkey" FOREIGN KEY ("teacherId") REFERENCES "Teacher" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        code TEXT UNIQUE NOT NULL,
+        "teacherId" TEXT NOT NULL,
+        "startDate" TIMESTAMP(3) NOT NULL,
+        "endDate" TIMESTAMP(3) NOT NULL,
+        room TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("teacherId") REFERENCES "Teacher"(id) ON DELETE CASCADE
       );
 
-      -- CreateTable "Enrollment"
+      -- Create Schedule table
+      CREATE TABLE IF NOT EXISTS "Schedule" (
+        id TEXT PRIMARY KEY,
+        "courseId" TEXT NOT NULL,
+        "dayOfWeek" INTEGER NOT NULL,
+        "startTime" TEXT NOT NULL,
+        "endTime" TEXT NOT NULL,
+        room TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("courseId") REFERENCES "Course"(id) ON DELETE CASCADE,
+        UNIQUE ("courseId", "dayOfWeek", "startTime")
+      );
+
+      -- Create Enrollment table
       CREATE TABLE IF NOT EXISTS "Enrollment" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "studentId" TEXT NOT NULL,
-          "courseId" TEXT NOT NULL,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          CONSTRAINT "Enrollment_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-          CONSTRAINT "Enrollment_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "Course" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-          CONSTRAINT "Enrollment_studentId_courseId_key" UNIQUE ("studentId", "courseId")
+        id TEXT PRIMARY KEY,
+        "studentId" TEXT NOT NULL,
+        "courseId" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("studentId") REFERENCES "Student"(id) ON DELETE CASCADE,
+        FOREIGN KEY ("courseId") REFERENCES "Course"(id) ON DELETE CASCADE,
+        UNIQUE ("studentId", "courseId")
       );
 
-      -- CreateTable "Grade"
+      -- Create Grade table
       CREATE TABLE IF NOT EXISTS "Grade" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "studentId" TEXT NOT NULL,
-          "courseId" TEXT NOT NULL,
-          "teacherId" TEXT NOT NULL,
-          "grade" DOUBLE PRECISION NOT NULL,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          CONSTRAINT "Grade_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-          CONSTRAINT "Grade_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "Course" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-          CONSTRAINT "Grade_teacherId_fkey" FOREIGN KEY ("teacherId") REFERENCES "Teacher" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-          CONSTRAINT "Grade_studentId_courseId_teacherId_key" UNIQUE ("studentId", "courseId", "teacherId")
+        id TEXT PRIMARY KEY,
+        "studentId" TEXT NOT NULL,
+        "courseId" TEXT NOT NULL,
+        "teacherId" TEXT NOT NULL,
+        grade DOUBLE PRECISION NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("studentId") REFERENCES "Student"(id) ON DELETE CASCADE,
+        FOREIGN KEY ("courseId") REFERENCES "Course"(id) ON DELETE CASCADE,
+        FOREIGN KEY ("teacherId") REFERENCES "Teacher"(id) ON DELETE CASCADE,
+        UNIQUE ("studentId", "courseId", "teacherId")
       );
     `;
 
-    try {
-      await pool.query(initMigration);
-      console.log('✅ Database schema synchronized!');
-    } catch (error: any) {
-      console.log('✅ Database schema already exists');
-    }
+    await dbPool.query(createTablesSQL);
+    console.log('✅ Database schema created!');
+
+    // Keep dbPool open for Prisma Client adapter
+    
+    // Initialize Prisma Client with adapter for seeding
+    const adapter = new PrismaPg(dbPool);
+    const prisma = new PrismaClient({ adapter });
 
     // Now check if we need to seed
     console.log('🌱 Checking if database needs seeding...');
@@ -182,16 +197,35 @@ async function setupDatabase() {
       });
       console.log(`  ✅ Created student profile (ID: ${student.id})`);
 
-      // Create Course
+      // Create Course with schedule
       const course = await prisma.course.create({
         data: {
           title: 'Introduction to Computer Science',
           description: 'Learn the fundamentals of computer science',
           code: 'CS101',
           teacherId: teacher.id,
+          startDate: new Date('2025-10-01'),
+          endDate: new Date('2026-03-31'),
+          room: 'Room 101',
+          schedule: {
+            create: [
+              {
+                dayOfWeek: 1, // Monday
+                startTime: '10:00',
+                endTime: '12:00',
+                room: 'Room 101',
+              },
+              {
+                dayOfWeek: 3, // Wednesday
+                startTime: '10:00',
+                endTime: '12:00',
+                room: 'Room 101',
+              },
+            ],
+          },
         },
       });
-      console.log(`  ✅ Created course: CS101 (ID: ${course.id})`);
+      console.log(`  ✅ Created course: CS101 with schedule (ID: ${course.id})`)
 
       // Enroll student
       const enrollment = await prisma.enrollment.create({
@@ -221,13 +255,10 @@ async function setupDatabase() {
     }
 
     await prisma.$disconnect();
+    await dbPool.end();
   } catch (error) {
     console.error('❌ Database setup failed:', error);
     throw error;
-  } finally {
-    if (pool) {
-      await pool.end();
-    }
   }
 }
 

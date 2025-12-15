@@ -18,9 +18,17 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed": "ts-node prisma/seed.ts",
+    "db:setup": "ts-node src/setup-database.ts",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset --force",
+    "prisma:generate": "prisma generate",
     "postinstall": "npm run prisma:generate",
-    "prisma:generate": "prisma generate"
+    "prepare": "npm run db:setup"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^3.0.1",

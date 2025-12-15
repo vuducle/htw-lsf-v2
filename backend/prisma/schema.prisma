@@ -44,16 +44,43 @@ model Teacher {
 }
 
 model Course {
-  id          String       @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
   description String?
-  code        String       @unique
+  code        String  @unique
   teacherId   String
-  teacher     Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher     Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Course timing and location
+  startDate DateTime
+  endDate   DateTime
+  room      String? // e.g., "Room 101", "A2.1"
+
+  // Schedule information (multiple sessions per week)
+  schedule Schedule[]
+
   enrollments Enrollment[]
   grades      Grade[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+}
+
+// Weekly schedule for a course (e.g., Monday 10:00-12:00)
+model Schedule {
+  id       String @id @default(cuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Day of week (0=Sunday, 1=Monday, ..., 6=Saturday)
+  dayOfWeek Int // 0-6
+  startTime String // "10:00" format (HH:mm)
+  endTime   String // "12:00" format (HH:mm)
+  room      String? // Optional: override room for this specific session
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, dayOfWeek, startTime])
 }
 
 model Enrollment {
