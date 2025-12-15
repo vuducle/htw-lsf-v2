@@ -14,6 +14,7 @@ import { UserModule } from './modules/user/user.module';
 import { StudentModule } from './modules/student/student.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
 import { EnrollmentModule } from './modules/enrollment/enrollment.module';
+import { CourseModule } from './modules/course/course.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { EnrollmentModule } from './modules/enrollment/enrollment.module';
     StudentModule,
     TeacherModule,
     EnrollmentModule,
+    CourseModule,
   ],
   controllers: [AppController],
   providers: [AppService],
