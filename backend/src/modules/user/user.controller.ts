@@ -1,12 +1,17 @@
 import {
   Controller,
   Post,
+  Put,
+  Patch,
   Get,
   Body,
   UseGuards,
   Request,
   BadRequestException,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
@@ -14,10 +19,16 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiBody,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { UserService } from './user.service';
-import { CreateUserDto, LoginUserDto } from './dto';
+import {
+  CreateUserDto,
+  LoginUserDto,
+  UpdateAvatarDto,
+  ChangePasswordDto,
+} from './dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -114,5 +125,99 @@ export class UserController {
   @ApiOperation({ summary: 'Get current user profile' })
   async getProfile(@Request() req) {
     return this.userService.getUserById(req.user.sub);
+  }
+
+  @Put('avatar')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('avatar'))
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary:
+      'Upload, update or remove user avatar. Send file to upload, empty body to remove.',
+  })
+  @ApiBody({
+    description:
+      'Avatar image file (optional). If not provided, avatar will be removed.',
+    type: UpdateAvatarDto,
+    required: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Avatar successfully uploaded or removed',
+    schema: {
+      oneOf: [
+        {
+          example: {
+            id: 'clz123xyz',
+            email: 'denis.kunz@example.com',
+            firstName: 'Denis',
+            lastName: 'Kunz',
+            avatarUrl: '/uploads/avatars/avatar_1702647000000_abc123.webp',
+          },
+        },
+        {
+          example: {
+            message: 'Avatar removed successfully',
+            id: 'clz123xyz',
+            email: 'denis.kunz@example.com',
+            firstName: 'Denis',
+            lastName: 'Kunz',
+            avatarUrl: null,
+          },
+        },
+      ],
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid file or file too large',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  async uploadAvatar(
+    @Request() req,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.userService.uploadAvatar(req.user.sub, file);
+  }
+
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change user password' })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password changed successfully',
+    schema: {
+      example: {
+        message: 'Password changed successfully',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Passwords do not match, new password must be different, or validation failed',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Current password is incorrect or unauthorized',
+  })
+  async changePassword(
+    @Request() req,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    const { currentPassword, newPassword, newPasswordConfirm } =
+      changePasswordDto;
+    return this.userService.changePassword(
+      req.user.sub,
+      currentPassword,
+      newPassword,
+      newPasswordConfirm,
+    );
   }
 }

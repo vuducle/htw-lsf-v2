@@ -48,6 +48,9 @@ lerna-debug.log*
 
 # Runtime data
 pids
+
+# Upload files (user avatars, etc.)
+/uploads
 *.pid
 *.seed
 *.pid.lock
