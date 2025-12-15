@@ -1,3 +1,21 @@
 {
-  "name": "untitled"
+  "name": "dzemals-super-app",
+  "version": "1.0.0",
+  "description": "Modern learning platform",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "yarn workspaces run dev",
+    "build": "yarn workspaces run build",
+    "start": "yarn workspaces run start",
+    "lint": "yarn workspaces run lint",
+    "frontend:dev": "yarn workspace frontend dev",
+    "frontend:build": "yarn workspace frontend build",
+    "backend:dev": "yarn workspace backend start:dev",
+    "backend:build": "yarn workspace backend build"
+  },
+  "devDependencies": {}
 }
