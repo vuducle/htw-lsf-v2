@@ -88,7 +88,47 @@ export class CourseController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all courses' })
+  @ApiOperation({
+    summary: 'Get all courses with advanced filtering and search',
+    description:
+      'Retrieve courses with advanced filtering by teacher, code, date range, and search functionality. Supports sorting and pagination.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of courses',
+    schema: {
+      example: {
+        data: [
+          {
+            id: 'cmj6vcg7t0004u7rb087ccqah',
+            title: 'Introduction to Web Development',
+            description: 'Learn the fundamentals of Web Development',
+            code: 'CS101',
+            teacherId: 'cmj6vcg5r0001u7rbprye5aev',
+            startDate: '2025-10-01T00:00:00.000Z',
+            endDate: '2026-03-31T00:00:00.000Z',
+            room: 'Room 101',
+            createdAt: '2025-12-15T08:05:20.535Z',
+            updatedAt: '2025-12-15T08:05:20.535Z',
+            teacher: {
+              id: 'cmj6vcg5r0001u7rbprye5aev',
+              user: {
+                firstName: 'Julia',
+                lastName: 'Nguyen',
+                email: 'julia.nguyen@example.com',
+              },
+            },
+          },
+        ],
+        total: 25,
+        page: 1,
+        limit: 10,
+        totalPages: 3,
+        hasNextPage: true,
+        hasPrevPage: false,
+      },
+    },
+  })
   async getAllCourses(@Query() query: GetAllCoursesQueryDto) {
     return this.courseService.getAllCourses(query);
   }
@@ -123,5 +163,87 @@ export class CourseController {
   @ApiResponse({ status: 404, description: 'Course not found' })
   async getEnrolledStudents(@Param('courseId') courseId: string) {
     return this.courseService.getEnrolledStudents(courseId);
+  }
+
+  @Get(':courseId/schedules')
+  @ApiOperation({
+    summary: 'Get course schedule details',
+    description:
+      'Retrieve all scheduled sessions for a course including day, time, and room information',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Course and schedules details',
+    schema: {
+      example: {
+        course: {
+          id: 'cmj6vcg7t0004u7rb087ccqah',
+          title: 'Introduction to Web Development',
+          code: 'CS101',
+          description: 'Learn the fundamentals of Web Development',
+          room: 'Room 101',
+          startDate: '2025-10-01T00:00:00.000Z',
+          endDate: '2026-03-31T00:00:00.000Z',
+        },
+        schedules: [
+          {
+            id: 'schedule123',
+            courseId: 'cmj6vcg7t0004u7rb087ccqah',
+            dayOfWeek: 1,
+            startTime: '10:00',
+            endTime: '12:00',
+            room: null,
+            createdAt: '2025-12-15T08:05:20.535Z',
+            updatedAt: '2025-12-15T08:05:20.535Z',
+          },
+          {
+            id: 'schedule124',
+            courseId: 'cmj6vcg7t0004u7rb087ccqah',
+            dayOfWeek: 3,
+            startTime: '14:00',
+            endTime: '16:00',
+            room: 'A2.1',
+            createdAt: '2025-12-15T08:05:20.535Z',
+            updatedAt: '2025-12-15T08:05:20.535Z',
+          },
+        ],
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Course not found' })
+  async getCourseSchedules(@Param('courseId') courseId: string) {
+    return this.courseService.getCourseSchedules(courseId);
+  }
+
+  @Get(':courseId/statistics')
+  @ApiOperation({
+    summary: 'Get course statistics',
+    description:
+      'Get enrollment count and grade statistics (average, highest, lowest) for a course',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Course statistics',
+    schema: {
+      example: {
+        courseId: 'cmj6vcg7t0004u7rb087ccqah',
+        courseTitle: 'Introduction to Web Development',
+        courseCode: 'CS101',
+        enrollmentStats: {
+          totalEnrolled: 25,
+          ungraded: 3,
+        },
+        gradeStats: {
+          totalGraded: 22,
+          averageGrade: 3.7,
+          highestGrade: 5.0,
+          lowestGrade: 2.1,
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Course not found' })
+  async getCourseStatistics(@Param('courseId') courseId: string) {
+    return this.courseService.getCourseStatistics(courseId);
   }
 }

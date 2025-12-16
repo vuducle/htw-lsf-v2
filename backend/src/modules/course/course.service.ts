@@ -111,19 +111,64 @@ export class CourseService {
   }
 
   async getAllCourses(query: GetAllCoursesQueryDto) {
-    const { page = 1, limit = 10, search, teacherId } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      teacherId,
+      code,
+      startDateFrom,
+      endDateTo,
+      sortBy = 'createdAt',
+      sortOrder = 'asc',
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};
 
+    // Filter by teacher ID
     if (teacherId) {
       where.teacherId = teacherId;
     }
 
+    // Filter by course code (exact match)
+    if (code) {
+      where.code = {
+        equals: code.toUpperCase(),
+        mode: 'insensitive',
+      };
+    }
+
+    // Filter by date range
+    if (startDateFrom || endDateTo) {
+      where.AND = [];
+      if (startDateFrom) {
+        where.AND.push({
+          startDate: {
+            gte: new Date(startDateFrom),
+          },
+        });
+      }
+      if (endDateTo) {
+        where.AND.push({
+          endDate: {
+            lte: new Date(endDateTo),
+          },
+        });
+      }
+    }
+
+    // Search in title, code, and description (case-insensitive)
     if (search) {
       where.OR = [
         {
           title: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          code: {
             contains: search,
             mode: 'insensitive',
           },
@@ -137,11 +182,32 @@ export class CourseService {
       ];
     }
 
+    // Build sort object
+    const orderBy: any = {};
+    const sortField = sortBy || 'createdAt';
+    const order = (sortOrder || 'asc').toLowerCase() as 'asc' | 'desc';
+    orderBy[sortField] = order;
+
     const [courses, total] = await this.prisma.client.$transaction([
       this.prisma.client.course.findMany({
         where,
         skip,
         take: limit,
+        orderBy,
+        include: {
+          teacher: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
       }),
       this.prisma.client.course.count({ where }),
     ]);
@@ -151,6 +217,9 @@ export class CourseService {
       total,
       page,
       limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: skip + limit < total,
+      hasPrevPage: page > 1,
     };
   }
 
@@ -206,6 +275,91 @@ export class CourseService {
         user: e.student.user,
         enrolledAt: e.createdAt,
       })),
+    };
+  }
+
+  /**
+   * Get course schedule details
+   */
+  async getCourseSchedules(courseId: string) {
+    const course = await this.prisma.client.course.findUnique({
+      where: { id: courseId },
+      include: {
+        schedule: {
+          orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+        },
+      },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+
+    return {
+      course: {
+        id: course.id,
+        title: course.title,
+        code: course.code,
+        description: course.description,
+        room: course.room,
+        startDate: course.startDate,
+        endDate: course.endDate,
+      },
+      schedules: course.schedule,
+    };
+  }
+
+  /**
+   * Get course statistics including enrollment count and grade statistics
+   */
+  async getCourseStatistics(courseId: string) {
+    const course = await this.prisma.client.course.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+
+    // Get enrollment count
+    const enrollmentCount = await this.prisma.client.enrollment.count({
+      where: { courseId },
+    });
+
+    // Get grades statistics
+    const grades = await this.prisma.client.grade.findMany({
+      where: { courseId },
+      select: { grade: true },
+    });
+
+    // Calculate grade statistics
+    let gradeStats = {
+      totalGraded: 0,
+      averageGrade: 0,
+      highestGrade: 0,
+      lowestGrade: 0,
+    };
+
+    if (grades.length > 0) {
+      const gradeValues = grades.map((g) => g.grade);
+      const sum = gradeValues.reduce((acc, val) => acc + val, 0);
+      gradeStats = {
+        totalGraded: grades.length,
+        averageGrade: parseFloat((sum / gradeValues.length).toFixed(2)),
+        highestGrade: Math.max(...gradeValues),
+        lowestGrade: Math.min(...gradeValues),
+      };
+    }
+
+    return {
+      courseId: course.id,
+      courseTitle: course.title,
+      courseCode: course.code,
+      enrollmentStats: {
+        totalEnrolled: enrollmentCount,
+        ungraded: enrollmentCount - gradeStats.totalGraded,
+      },
+      gradeStats,
     };
   }
 }
