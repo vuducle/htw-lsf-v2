@@ -26,6 +26,7 @@ import { UserService } from './user.service';
 import {
   CreateUserDto,
   LoginUserDto,
+  UpdateUserDto,
   UpdateAvatarDto,
   ChangePasswordDto,
   ForgotPasswordDto,
@@ -124,9 +125,102 @@ export class UserController {
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiOperation({
+    summary: 'Get current user profile',
+    description: 'Retrieve the authenticated user profile information',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current user profile',
+    schema: {
+      example: {
+        id: 'clz123xyz',
+        email: 'user@example.com',
+        firstName: 'Julia',
+        lastName: 'Nguyen',
+        avatarUrl: '/uploads/avatars/avatar_1702647000000_abc123.webp',
+        createdAt: '2025-12-15T08:05:20.535Z',
+        updatedAt: '2025-12-15T08:05:20.535Z',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - invalid or missing JWT token',
+  })
   async getProfile(@Request() req) {
     return this.userService.getUserById(req.user.sub);
+  }
+
+  @Put('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update user profile',
+    description:
+      'Update user profile information including email, firstName, and lastName. Only the authenticated user can update their own profile. All fields are optional - only provide the fields you want to update.',
+  })
+  @ApiBody({
+    type: UpdateUserDto,
+    description: 'Profile update data (all fields optional)',
+    examples: {
+      partial: {
+        description: 'Update only firstName',
+        value: {
+          firstName: 'Denis',
+        },
+      },
+      full: {
+        description: 'Update all fields',
+        value: {
+          email: 'denis.kunz@example.com',
+          firstName: 'Denis',
+          lastName: 'Kunz',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile updated successfully',
+    schema: {
+      example: {
+        id: 'clz123xyz',
+        email: 'denis.kunz@example.com',
+        firstName: 'Denis',
+        lastName: 'Kunz',
+        avatarUrl: '/uploads/avatars/avatar_1702647000000_abc123.webp',
+        createdAt: '2025-12-15T08:05:20.535Z',
+        updatedAt: '2025-12-16T13:25:00.000Z',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation error or email already in use',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Email is already in use',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - invalid or missing JWT token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+      },
+    },
+  })
+  async updateProfile(
+    @Request() req,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.userService.updateProfile(req.user.sub, updateUserDto);
   }
 
   @Put('avatar')

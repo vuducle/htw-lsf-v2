@@ -2,11 +2,13 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as bcrypt from 'bcryptjs';
+import { Logger} from "@nestjs/common";
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
 async function setupDatabase() {
+  const logger = new Logger('setupDatabase');
   const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
@@ -25,7 +27,7 @@ async function setupDatabase() {
   });
 
   try {
-    console.log('🔧 Checking if database exists...');
+    logger.log('🔧 Checking if database exists...');
 
     const dbCheckResult = await adminPool.query(
       `SELECT 1 FROM pg_database WHERE datname = $1`,
@@ -33,11 +35,11 @@ async function setupDatabase() {
     );
 
     if (dbCheckResult.rows.length === 0) {
-      console.log(`📦 Creating database: ${dbConfig.database}...`);
+      logger.log(`📦 Creating database: ${dbConfig.database}...`);
       await adminPool.query(`CREATE DATABASE "${dbConfig.database}"`);
-      console.log(`✅ Database created: ${dbConfig.database}`);
+      logger.log(`✅ Database created: ${dbConfig.database}`);
     } else {
-      console.log(`✅ Database already exists: ${dbConfig.database}`);
+      logger.log(`✅ Database already exists: ${dbConfig.database}`);
     }
 
     await adminPool.end();
@@ -46,7 +48,7 @@ async function setupDatabase() {
     const dbPool = new Pool(dbConfig);
     
     // Run manual migrations (Prisma 7.1 with adapters doesn't support migrate commands)
-    console.log('🚀 Running database migrations...');
+    logger.log('🚀 Running database migrations...');
     
     const createTablesSQL = `
       -- Create User table
@@ -138,7 +140,7 @@ async function setupDatabase() {
     `;
 
     await dbPool.query(createTablesSQL);
-    console.log('✅ Database schema created!');
+    logger.log('✅ Database schema created!');
 
     // Keep dbPool open for Prisma Client adapter
     
@@ -147,11 +149,11 @@ async function setupDatabase() {
     const prisma = new PrismaClient({ adapter });
 
     // Now check if we need to seed
-    console.log('🌱 Checking if database needs seeding...');
+    logger.log('🌱 Checking if database needs seeding...');
     const userCount = await prisma.user.count();
 
     if (userCount === 0) {
-      console.log('📝 Seeding database...');
+      logger.log('📝 Seeding database...');
 
       // Create Teacher User
       const teacherUser = await prisma.user.create({
@@ -163,7 +165,7 @@ async function setupDatabase() {
           avatarUrl: 'https://api.example.com/avatars/julia-nguyen.jpg',
         },
       });
-      console.log(
+      logger.log(
         `  ✅ Created teacher user: Julia Nguyen (ID: ${teacherUser.id})`,
       );
 
@@ -173,7 +175,7 @@ async function setupDatabase() {
           userId: teacherUser.id,
         },
       });
-      console.log(`  ✅ Created teacher profile (ID: ${teacher.id})`);
+      logger.log(`  ✅ Created teacher profile (ID: ${teacher.id})`);
 
       // Create Student User
       const studentUser = await prisma.user.create({
@@ -185,7 +187,7 @@ async function setupDatabase() {
           avatarUrl: 'https://api.example.com/avatars/triesnha-ameilya.jpg',
         },
       });
-      console.log(
+      logger.log(
         `  ✅ Created student user: Triesnha Ameilya (ID: ${studentUser.id})`,
       );
 
@@ -195,7 +197,7 @@ async function setupDatabase() {
           userId: studentUser.id,
         },
       });
-      console.log(`  ✅ Created student profile (ID: ${student.id})`);
+      logger.log(`  ✅ Created student profile (ID: ${student.id})`);
 
 
       const student2User = await prisma.user.create({
@@ -207,7 +209,7 @@ async function setupDatabase() {
           avatarUrl: 'https://api.example.com/avatars/vu-duc-le.jpg',
         },
       });
-      console.log(
+      logger.log(
         `  ✅ Created student user: Vu Duc Le (ID: ${student2User.id})`,
       );
 
@@ -217,7 +219,7 @@ async function setupDatabase() {
           userId: student2User.id,
         },
       });
-      console.log(`  ✅ Created student profile (ID: ${student2.id})`);
+      logger.log(`  ✅ Created student profile (ID: ${student2.id})`);
 
 
       const student3User = await prisma.user.create({
@@ -229,7 +231,7 @@ async function setupDatabase() {
           avatarUrl: 'https://api.example.com/avatars/armin-dorri.jpg',
         },
       });
-      console.log(
+      logger.log(
         `  ✅ Created student user: Armin Dorri (ID: ${student3User.id})`,
       );
 
@@ -239,7 +241,7 @@ async function setupDatabase() {
           userId: student3User.id,
         },
       });
-      console.log(`  ✅ Created student profile (ID: ${student3.id})`);
+      logger.log(`  ✅ Created student profile (ID: ${student3.id})`);
 
       // Create Course with schedule
       const course = await prisma.course.create({
@@ -269,7 +271,7 @@ async function setupDatabase() {
           },
         },
       });
-      console.log(`  ✅ Created course: CS101 with schedule (ID: ${course.id})`)
+      logger.log(`  ✅ Created course: CS101 with schedule (ID: ${course.id})`)
 
       // Enroll student
       const enrollment = await prisma.enrollment.create({
@@ -278,7 +280,7 @@ async function setupDatabase() {
           courseId: course.id,
         },
       });
-      console.log(
+      logger.log(
         `  ✅ Enrolled student in CS101 (Enrollment ID: ${enrollment.id})`,
       );
 
@@ -291,17 +293,17 @@ async function setupDatabase() {
           grade: 4.5,
         },
       });
-      console.log(`  ✅ Created grade: 4.5 (Grade ID: ${grade.id})`);
+      logger.log(`  ✅ Created grade: 4.5 (Grade ID: ${grade.id})`);
 
-      console.log('✅ Database seeded successfully!');
+      logger.log('✅ Database seeded successfully!');
     } else {
-      console.log('✅ Database already has users, skipping seed');
+      logger.log('✅ Database already has users, skipping seed');
     }
 
     await prisma.$disconnect();
     await dbPool.end();
   } catch (error) {
-    console.error('❌ Database setup failed:', error);
+    logger.error('❌ Database setup failed:', error);
     throw error;
   }
 }

@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
 import { EmailService } from '../../email/email.service';
-import { CreateUserDto, LoginUserDto } from './dto';
+import { CreateUserDto, LoginUserDto, UpdateUserDto } from './dto';
 import * as bcrypt from 'bcryptjs';
 import { ImageUtils } from '../../utils/image.utils';
 
@@ -229,6 +229,44 @@ export class UserService {
         updatedAt: true,
       },
     });
+  }
+
+  /**
+   * Update user profile (firstName, lastName, email)
+   */
+  async updateProfile(userId: string, updateUserDto: UpdateUserDto) {
+    const { email, firstName, lastName } = updateUserDto;
+
+    // If email is being updated, check if it's already in use
+    if (email) {
+      const existingUser = await this.prisma.client.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUser && existingUser.id !== userId) {
+        throw new BadRequestException('Email is already in use');
+      }
+    }
+
+    const updatedUser = await this.prisma.client.user.update({
+      where: { id: userId },
+      data: {
+        ...(email && { email }),
+        ...(firstName && { firstName }),
+        ...(lastName && { lastName }),
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return updatedUser;
   }
 
   async uploadAvatar(userId: string, file?: Express.Multer.File) {
