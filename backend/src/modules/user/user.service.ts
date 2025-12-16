@@ -6,6 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
+import { EmailService } from '../../email/email.service';
 import { CreateUserDto, LoginUserDto } from './dto';
 import * as bcrypt from 'bcryptjs';
 import { ImageUtils } from '../../utils/image.utils';
@@ -24,6 +25,7 @@ export class UserService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private redisService: RedisService,
+    private emailService: EmailService,
   ) {}
 
   async createUser(createUserDto: CreateUserDto) {
@@ -391,5 +393,119 @@ export class UserService {
     return {
       message: 'Password changed successfully',
     };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.prisma.client.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      // Don't reveal if email exists or not (security best practice)
+      return {
+        message: 'If an account with that email exists, a password reset link has been sent',
+      };
+    }
+
+    // Generate password reset token (valid for 1 hour)
+    const resetToken = this.jwtService.sign(
+      { email: user.email, sub: user.id, type: 'reset' },
+      { expiresIn: '1h', secret: process.env.JWT_SECRET },
+    );
+
+    // Store reset token in Redis with 1 hour expiry
+    await this.redisService.setCache<{ email: string; userId: string }>(
+      `password-reset:${resetToken}`,
+      {
+        email: user.email,
+        userId: user.id,
+      },
+      3600, // 1 hour
+    );
+
+    // Build reset link
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+
+    // Send email
+    try {
+      await this.emailService.sendPasswordResetEmail(
+        user.email,
+        user.firstName,
+        resetToken,
+        resetLink,
+      );
+    } catch (error) {
+      console.error('Failed to send password reset email:', error);
+      // Don't fail the request even if email fails (can be logged/monitored)
+    }
+
+    return {
+      message: 'If an account with that email exists, a password reset link has been sent',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string, newPasswordConfirm: string) {
+    // Validate passwords match
+    if (newPassword !== newPasswordConfirm) {
+      throw new BadRequestException('New passwords do not match');
+    }
+
+    // Validate token format
+    if (!token || typeof token !== 'string') {
+      throw new BadRequestException('Invalid reset token');
+    }
+
+    try {
+      // Verify token
+      const decoded = this.jwtService.verify(token, {
+        secret: process.env.JWT_SECRET,
+      }) as any;
+
+      if (decoded.type !== 'reset') {
+        throw new BadRequestException('Invalid token type');
+      }
+
+      // Check if token exists in Redis (not already used)
+      const resetData = await this.redisService.getCache<{ email: string; userId: string }>(
+        `password-reset:${token}`,
+      );
+
+      if (!resetData) {
+        throw new BadRequestException('Password reset token has expired or is invalid');
+      }
+
+      // Get user
+      const user = await this.prisma.client.user.findUnique({
+        where: { id: decoded.sub },
+      });
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await this.prisma.client.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword },
+      });
+
+      // Invalidate token by removing from Redis
+      await this.redisService.invalidateCache(`password-reset:${token}`);
+
+      // Clear any cached login data for this user
+      await this.redisService.invalidateCache(`login:${user.email}`);
+
+      return {
+        message: 'Password reset successfully. You can now login with your new password.',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
   }
 }

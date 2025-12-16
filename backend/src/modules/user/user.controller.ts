@@ -28,6 +28,8 @@ import {
   LoginUserDto,
   UpdateAvatarDto,
   ChangePasswordDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from './dto';
 
 @ApiTags('Authentication')
@@ -219,5 +221,44 @@ export class UserController {
       newPassword,
       newPasswordConfirm,
     );
+  }
+
+  @Post('forgot-password')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @ApiOperation({ summary: 'Request password reset email' })
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'If email exists, password reset link has been sent',
+    schema: {
+      example: {
+        message: 'If an account with that email exists, a password reset link has been sent',
+      },
+    },
+  })
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.userService.forgotPassword(forgotPasswordDto.email);
+  }
+
+  @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Reset password with token' })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successfully',
+    schema: {
+      example: {
+        message: 'Password reset successfully. You can now login with your new password.',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid or expired token, or password validation failed',
+  })
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    const { token, newPassword, newPasswordConfirm } = resetPasswordDto;
+    return this.userService.resetPassword(token, newPassword, newPasswordConfirm);
   }
 }

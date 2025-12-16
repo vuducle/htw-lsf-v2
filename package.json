@@ -17,5 +17,9 @@
     "backend:dev": "yarn workspace backend start:dev",
     "backend:build": "yarn workspace backend build"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "dependencies": {
+    "@types/nodemailer": "^7.0.4",
+    "nodemailer": "^7.0.11"
+  }
 }

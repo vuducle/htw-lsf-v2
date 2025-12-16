@@ -99,6 +99,10 @@ export class RedisService {
     await this.del(`cache:${key}`);
   }
 
+  async invalidateCache(key: string): Promise<void> {
+    await this.del(`cache:${key}`);
+  }
+
   // User data caching - Generic version
   async cacheUserData<T extends { id: string }>(
     userId: string,

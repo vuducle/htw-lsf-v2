@@ -5,12 +5,14 @@ import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { RedisModule } from '../../redis/redis.module';
+import { EmailModule } from '../../email/email.module';
 import { JwtStrategy } from '../../strategies/jwt.strategy';
 
 @Module({
   imports: [
     PrismaModule,
     RedisModule,
+    EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'secret',
